@@ -62,23 +62,25 @@ A multi-functional Discord bot built with Python using the `discord.py` library.
     ```bash
     pip install -r requirements.txt
     ```
-    *(The `update_and_run.sh` script will also attempt to run this on updates/version switches if `requirements.txt` is present).*
+    *(The `run_bot_manager.py` script will also attempt to run this on updates/version switches if `requirements.txt` is present).*
 
 ## Running the Bot
 
-The bot is designed to be run using the `update_and_run.sh` script, which handles automatic updates and version control.
+The bot is designed to be run using the `run_bot_manager.py` script, which handles starting the bot, automatic updates, and version control.
 
-1.  **Make the Script Executable (if not already):**
-    ```bash
-    chmod +x update_and_run.sh
-    ```
+1.  **Configure `run_bot_manager.py` (Optional):**
+    Open `run_bot_manager.py` in a text editor. You can adjust variables at the top of the script:
+    *   `GIT_BRANCH`: Default branch for auto-updates (e.g., "main").
+    *   `CHECK_INTERVAL_SECONDS`: How often to check for updates (e.g., 300 for 5 minutes).
 
-2.  **Run the Script:**
+2.  **Run the Bot Manager Script:**
     ```bash
-    ./update_and_run.sh
+    python3 run_bot_manager.py
     ```
-    *   The bot will start, and its logs (including output from the `update_and_run.sh` script and `bot.py`) will be saved to `bot.log` in the project's root directory.
-    *   The script will periodically check for updates from the `main` branch (configurable in the script) of your Git repository.
+    *   The manager script will start. It will then launch `bot.py` as a subprocess.
+    *   Logs from the manager script itself will be saved to `bot_manager.log`.
+    *   Logs from `bot.py` (the Discord bot) will be saved to `bot.log`.
+    *   The manager script will periodically check for updates from the configured `GIT_BRANCH`.
 
 ## Basic Usage Examples
 
@@ -105,5 +107,35 @@ The bot is designed to be run using the `update_and_run.sh` script, which handle
 
 ## Production Deployment
 
-For running the bot reliably in a production environment, consider using a process manager like `systemd` or `supervisor` to manage the `update_and_run.sh` script. This provides features like auto-restarting on crashes and cleaner log management. An example `systemd` service configuration is commented within the `update_and_run.sh` script or can be found in standard Linux administration guides.
+For running the bot reliably in a production environment, consider using a process manager like `systemd` (common on Linux) or `supervisor` to manage the `run_bot_manager.py` script. This provides features like auto-restarting the manager (and thus the bot) on crashes or server reboot, and can offer more advanced log management.
+
+The `run_bot_manager.py` script itself logs its operations to `bot_manager.log`, and the Discord bot's (`bot.py`) output is logged to `bot.log`.
+
+Example `systemd` service file (`/etc/systemd/system/discordbot.service`):
+```ini
+[Unit]
+Description=Discord Bot with Python Manager
+After=network.target
+
+[Service]
+User=your_username          # Replace with the user the bot should run as
+Group=your_groupname        # Replace with the group for the user
+WorkingDirectory=/path/to/your/bot/repo # Absolute path to the bot's repository root
+ExecStart=/usr/bin/python3 /path/to/your/bot/repo/run_bot_manager.py # Adjust python3 path if needed
+Restart=always
+RestartSec=10
+# StandardOutput and StandardError can be managed by systemd's journal
+# or redirected to files if preferred, though the script already logs.
+# StandardOutput=journal
+# StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+After creating/editing the service file:
+1.  Reload systemd: `sudo systemctl daemon-reload`
+2.  Enable the service to start on boot: `sudo systemctl enable discordbot.service`
+3.  Start the service: `sudo systemctl start discordbot.service`
+4.  Check status: `sudo systemctl status discordbot.service`
+5.  View logs (if using journal): `journalctl -u discordbot.service -f`
 ```
