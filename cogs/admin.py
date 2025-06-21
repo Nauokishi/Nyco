@@ -111,6 +111,108 @@ class AdminCog(commands.Cog, name="Admin"):
         except Exception as e:
             await ctx.send(f"An unexpected error occurred: {str(e)}")
 
+    @commands.command(name="list_tags", aliases=["get_tags", "show_tags"])
+    @commands.is_owner()
+    async def list_tags(self, ctx: commands.Context):
+        """Lists all local git tags in the repository."""
+        try:
+            tags_output = subprocess.check_output(["git", "tag"], cwd=REPO_PATH, text=True, stderr=subprocess.STDOUT)
+            tags = tags_output.strip().splitlines()
+
+            if not tags:
+                await ctx.send("No local tags found in the repository.")
+                return
+
+            # Format tags for better readability, especially if many
+            if len(tags) > 20: # If more than 20 tags, indicate count and show first 20
+                message = f"Found {len(tags)} local tags. Showing the first 20:\n```\n" + "\n".join(tags[:20]) + "\n```"
+                if len(tags) > 20:
+                    message += "\n(And more...)"
+            else:
+                message = "Local git tags:\n```\n" + "\n".join(tags) + "\n```"
+
+            await ctx.send(message)
+
+        except subprocess.CalledProcessError as e:
+            # This might happen if `git tag` itself fails for some reason, though unlikely for a simple listing.
+            # Or if the repo is not a git repo, but other commands would likely fail first.
+            error_output = e.output.decode(errors='ignore').strip()
+            if "not a git repository" in error_output.lower(): # More specific error
+                 await ctx.send("Error: The current directory does not seem to be a git repository.")
+            else:
+                await ctx.send(f"Error listing tags. Git output:\n```\n{error_output}\n```")
+        except FileNotFoundError:
+            await ctx.send("Error: Git command not found. Ensure git is installed and in PATH on the server.")
+        except Exception as e:
+            await ctx.send(f"An unexpected error occurred while listing tags: {str(e)}")
+
+    @commands.command(name="view_log", aliases=["show_log", "botlog"])
+    @commands.is_owner()
+    async def view_log(self, ctx: commands.Context, lines: int = 20):
+        """Displays the last N lines from bot.log.
+        Usage: !view_log [number_of_lines]
+        Example: !view_log 50
+        Defaults to 20 lines if no number is provided.
+        """
+        if lines <= 0:
+            await ctx.send("Number of lines must be a positive integer.")
+            return
+
+        log_file_path = os.path.join(REPO_PATH, "bot.log") # Assuming bot.log is in REPO_PATH
+
+        try:
+            if not os.path.exists(log_file_path):
+                await ctx.send(f"Log file (`{log_file_path}`) not found.")
+                return
+
+            if os.path.getsize(log_file_path) == 0:
+                await ctx.send(f"Log file (`{log_file_path}`) is empty.")
+                return
+
+            # Read the last N lines efficiently
+            # Using subprocess to call `tail` is generally robust and efficient for this.
+            try:
+                log_output = subprocess.check_output(
+                    ["tail", "-n", str(lines), log_file_path],
+                    text=True,
+                    stderr=subprocess.STDOUT
+                )
+            except FileNotFoundError: # If `tail` command is not found (less likely on Linux/macOS)
+                # Fallback to Python read if tail is not available
+                with open(log_file_path, 'r', encoding='utf-8', errors='replace') as f:
+                    all_lines = f.readlines()
+                log_output = "".join(all_lines[-lines:])
+
+
+            if not log_output.strip():
+                await ctx.send(f"The last {lines} lines of the log are empty or contain only whitespace.")
+                return
+
+            # Discord message character limit is 2000.
+            # Add triple backticks for code block, and "Last X lines of bot.log:\n"
+            header = f"Last {lines} lines of `bot.log`:\n"
+            max_len_for_log = 2000 - len(header) - 7 # 7 for ```\n and \n```
+
+            if len(log_output) > max_len_for_log:
+                # If too long, send as a file or truncate
+                # Sending as file is better for large logs
+                try:
+                    with open(log_file_path, 'rb') as fp: # Read as bytes for file sending
+                        discord_file = discord.File(fp, filename="bot_log_tail.txt")
+                    await ctx.send(f"The log output is too long. Here are the last {lines} lines as an attachment:", file=discord_file)
+                except Exception as e_file:
+                    await ctx.send(f"Log output is too long, and I couldn't send it as a file: {str(e_file)}. Here's a truncated version:\n```\n{log_output[-max_len_for_log:]}\n```")
+
+            else:
+                await ctx.send(f"{header}```\n{log_output.strip()}\n```")
+
+        except subprocess.CalledProcessError as e:
+            # This could happen if `tail` fails for some reason.
+            await ctx.send(f"Error reading log with tail: {e.output.decode(errors='ignore').strip()}")
+        except Exception as e:
+            await ctx.send(f"An unexpected error occurred while viewing the log: {str(e)}")
+
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(AdminCog(bot))
     print("AdminCog loaded with version control commands.")
