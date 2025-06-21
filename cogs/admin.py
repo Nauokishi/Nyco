@@ -92,7 +92,9 @@ class AdminCog(commands.Cog, name="Admin"):
             message += f"- Branch: `{branch}`\n"
             message += f"- Commit: `{commit_hash}`\n"
             if tags:
-                message += f"- Tags: `{tags.replace('\\n', ', ')}`"
+                # Replace actual newline characters from git output with ", " for display
+                tags_formatted = tags.replace('\n', ', ')
+                message += f"- Tags: `{tags_formatted}`"
             else:
                 message += "- Tags: `No tags on current commit.`"
 
