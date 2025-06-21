@@ -38,20 +38,18 @@ A multi-functional Discord bot built with Python using the `discord.py` library.
     cd <repository-name>
     ```
 
-2.  **Create `config.py`:**
-    In the root directory of the project, create a file named `config.py` with the following content:
+2.  **Create `config.json`:**
+    In the root directory of the project, create a file named `config.json` with the following content:
 
-    ```python
-    # config.py
-
-    # Your Discord Bot Token
-    # Replace "YOUR_DISCORD_BOT_TOKEN_HERE" with your actual bot token.
-    BOT_TOKEN = "YOUR_DISCORD_BOT_TOKEN_HERE"
-
-    # The prefix for bot commands (e.g., !, ?, bot-)
-    PREFIX = "!"
+    ```json
+    {
+      "BOT_TOKEN": "YOUR_DISCORD_BOT_TOKEN_HERE",
+      "PREFIX": "!"
+    }
     ```
-    *   **Important:** Keep your `BOT_TOKEN` secret. Do not commit `config.py` to public repositories if it contains sensitive information. Consider adding `config.py` to your `.gitignore` file.
+    *   Replace `"YOUR_DISCORD_BOT_TOKEN_HERE"` with your actual Discord bot token.
+    *   You can change the `"PREFIX"` to your desired command prefix.
+    *   **Important:** Keep your `BOT_TOKEN` secret. This `config.json` file should ideally be listed in your `.gitignore` file to prevent accidentally committing your token.
 
 3.  **Install Dependencies:**
     Ensure your `requirements.txt` file (located in the root of the repository) includes at least:
